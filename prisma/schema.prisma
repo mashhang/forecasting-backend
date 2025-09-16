@@ -1,0 +1,169 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ===============================
+// User model to handle Staff and Admin roles.
+// Each user can create budget proposals.
+// ===============================
+model User {
+  id        String @id @default(uuid())
+  email     String @unique
+  password  String
+  name      String
+  role      Role   @default(STAFF)
+
+  // Relations
+  proposals        BudgetProposal[]
+  utilizationSlips BudgetUtilizationSlip[]
+  comments         Comment[]
+
+  @@map("users")
+}
+
+// Enum for user roles
+enum Role {
+  STAFF
+  ADMIN
+}
+
+// ===============================
+// Main budget proposal document
+// ===============================
+model BudgetProposal {
+  id          String            @id @default(uuid())
+  title       String
+  description String?
+  year        Int
+  status      BudgetStatus      @default(DRAFT)
+  version     Int               @default(1)
+
+  // Timestamps
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+
+  // Relations
+  author      User              @relation(fields: [authorId], references: [id])
+  authorId    String
+  lineItems   BudgetLineItem[]
+  comments    Comment[]
+  utilization BudgetUtilizationSlip[]
+
+  @@map("budget_proposals")
+}
+
+// Enum for proposal status
+enum BudgetStatus {
+  DRAFT
+  SUBMITTED
+  REVIEW
+  APPROVED
+  REJECTED
+}
+
+// ===============================
+// Line items inside a proposal
+// ===============================
+model BudgetLineItem {
+  id              String         @id @default(uuid())
+  description     String
+  justification   String?
+
+  // Relations
+  budgetProposal   BudgetProposal @relation(fields: [budgetProposalId], references: [id])
+  budgetProposalId String
+  category         Category       @relation(fields: [categoryId], references: [id])
+  categoryId       String
+
+  // Allocations (quarterly + annual)
+  allocations      BudgetAllocation[]
+
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@map("budget_line_items")
+}
+
+// ===============================
+// Quarterly allocations for each line item
+// ===============================
+model BudgetAllocation {
+  id              String         @id @default(uuid())
+  quarter         Int            // 1, 2, 3, 4, or 0 for annual total
+  proposedAmount  Float
+  approvedAmount  Float?
+
+  // Relations
+  budgetLineItem   BudgetLineItem @relation(fields: [budgetLineItemId], references: [id])
+  budgetLineItemId String
+
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@map("budget_allocations")
+  @@index([quarter])
+}
+
+// ===============================
+// Expense categories
+// ===============================
+model Category {
+  id        String           @id @default(uuid())
+  name      String           @unique // e.g., "Personnel Services", "MOOE", "CAPEX"
+  lineItems BudgetLineItem[]
+
+  @@map("categories")
+}
+
+// ===============================
+// Comments on proposals
+// ===============================
+model Comment {
+  id              String         @id @default(uuid())
+  text            String
+  createdAt       DateTime       @default(now())
+
+  // Relations
+  author          User           @relation(fields: [authorId], references: [id])
+  authorId        String
+  budgetProposal  BudgetProposal @relation(fields: [budgetProposalId], references: [id])
+  budgetProposalId String
+
+  @@map("comments")
+}
+
+// ===============================
+// Budget utilization slip (tracking spending)
+// ===============================
+model BudgetUtilizationSlip {
+  id              String          @id @default(uuid())
+  amount          Float
+  justification   String?
+  status          SlipStatus      @default(PENDING)
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  // Relations
+  requester       User            @relation(fields: [requesterId], references: [id])
+  requesterId     String
+  budgetProposal  BudgetProposal  @relation(fields: [budgetProposalId], references: [id])
+  budgetProposalId String
+
+  @@map("budget_utilization_slips")
+}
+
+// Enum for utilization slip status
+enum SlipStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
