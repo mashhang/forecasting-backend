@@ -77,6 +77,8 @@ model BudgetLineItem {
   id              String         @id @default(uuid())
   description     String
   justification   String?
+  department      String?
+  year            Int
 
   // Relations
   budgetProposal   BudgetProposal @relation(fields: [budgetProposalId], references: [id])
