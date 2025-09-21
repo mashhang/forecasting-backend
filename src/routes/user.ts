@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { PrismaClient } from "@prisma/client";
+import { PrismaClient } from "../../generated/prisma";
 import bcrypt from "bcrypt";
 
 const prisma = new PrismaClient();
@@ -25,7 +25,7 @@ router.get("/:id", async (req, res) => {
   try {
     const { id } = req.params;
     const user = await prisma.user.findUnique({
-      where: { id: Number(id) },
+      where: { id: String(id) },
       select: {
         id: true,
         email: true,

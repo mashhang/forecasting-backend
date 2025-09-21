@@ -4,6 +4,7 @@ import dotenv from "dotenv";
 import authRoutes from "./src/routes/auth.js";
 import uploadRoutes from "./src/routes/upload.js";
 import forecastRoutes from "./src/routes/forecast.js";
+import userRoutes from "./src/routes/user.js";
 
 dotenv.config();
 const app = express();
@@ -17,6 +18,7 @@ app.use(
 );
 
 app.use("/api/auth", authRoutes);
+app.use("/api/user", userRoutes);
 app.use("/api/file", uploadRoutes);
 app.use("/api/forecast", forecastRoutes);
 
