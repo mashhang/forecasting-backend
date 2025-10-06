@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction, Router } from "express";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
-import { PrismaClient, User } from "../../generated/prisma";
+import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
 const router = Router();
@@ -9,7 +9,7 @@ const JWT_SECRET = process.env.JWT_SECRET || "default_secret";
 
 declare module "express-serve-static-core" {
   interface Request {
-    user?: User;
+    user?: any;
   }
 }
 

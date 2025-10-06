@@ -1,0 +1,34 @@
+"use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = __importDefault(require("express"));
+const cors_1 = __importDefault(require("cors"));
+const dotenv_1 = __importDefault(require("dotenv"));
+const auth_js_1 = __importDefault(require("./src/routes/auth.js"));
+const user_js_1 = __importDefault(require("./src/routes/user.js"));
+dotenv_1.default.config();
+const app = (0, express_1.default)();
+app.use(express_1.default.json());
+app.use((0, cors_1.default)({
+    origin: [
+        "http://localhost:3000",
+        "http://localhost:3001",
+        "http://127.0.0.1:3000",
+        "http://127.0.0.1:3001"
+    ],
+    credentials: true,
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: [
+        "Origin",
+        "X-Requested-With",
+        "Content-Type",
+        "Accept",
+        "Authorization",
+        "Cache-Control"
+    ],
+}));
+app.use("/api/auth", auth_js_1.default);
+app.use("/api/user", user_js_1.default);
+app.listen(5001, () => console.log("Server running on port 5001"));
