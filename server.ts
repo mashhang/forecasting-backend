@@ -13,8 +13,22 @@ const app = express();
 app.use(express.json());
 app.use(
   cors({
-    origin: "http://localhost:3000", // allow only your Next.js frontend
+    origin: [
+      "http://localhost:3000",
+      "http://localhost:3001", 
+      "http://127.0.0.1:3000",
+      "http://127.0.0.1:3001"
+    ], // must specify exact origins when using credentials: true
     credentials: true,
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: [
+      "Origin",
+      "X-Requested-With", 
+      "Content-Type",
+      "Accept",
+      "Authorization",
+      "Cache-Control"
+    ],
   })
 );
 

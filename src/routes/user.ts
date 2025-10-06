@@ -21,7 +21,8 @@ router.post("/", async (req, res) => {
         email,
         password: hashedPassword,
         role,
-        status,
+        status: "PENDING",
+        firstLogin: true, // Mark as first login
       },
       select: {
         id: true,
@@ -29,6 +30,7 @@ router.post("/", async (req, res) => {
         name: true,
         role: true,
         status: true,
+        firstLogin: true,
       },
     });
     res.status(201).json(user);
@@ -109,6 +111,49 @@ router.get("/:id", async (req, res) => {
     }
     res.status(200).json(user);
   } catch (error) {
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.post("/change-password", async (req, res) => {
+  try {
+    const { userId, newPassword } = req.body;
+
+    if (!userId || !newPassword) {
+      return res.status(400).json({ error: "Missing required fields" });
+    }
+
+    if (newPassword.length < 6) {
+      return res.status(400).json({ error: "Password must be at least 6 characters long" });
+    }
+
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+    const updatedUser = await prisma.user.update({
+      where: { id: String(userId) },
+      data: {
+        password: hashedPassword,
+        firstLogin: false, // Mark that user has completed first login
+        status: "ACTIVE", // Activate the account after password change
+      },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        role: true,
+        status: true,
+      },
+    });
+
+    res.status(200).json({ 
+      message: "Password changed successfully",
+      user: updatedUser 
+    });
+  } catch (error: any) {
+    if (error.code === "P2025") {
+      return res.status(404).json({ error: "User not found" });
+    }
+    console.error("Error changing password:", error);
     res.status(500).json({ error: "Internal server error" });
   }
 });

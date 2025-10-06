@@ -79,31 +79,23 @@ router.get("/departments/:userId", async (req, res) => {
     console.log("Fetching departments for userId:", userId);
     if (!userId) return res.status(400).json({ error: "Missing userId" });
 
-    const proposals = await prisma.budgetProposal.findMany({
-      where: {
-        authorId: userId,
-      },
+    // Get all unique departments from all budget line items, not just user's proposals
+    const lineItems = await prisma.budgetLineItem.findMany({
       select: {
-        id: true,
-        lineItems: {
-          select: {
-            department: true,
-          },
-        },
+        department: true,
       },
+      distinct: ['department'],
     });
 
-    console.log("Proposals found:", JSON.stringify(proposals, null, 2));
+    console.log("All line items with departments:", JSON.stringify(lineItems, null, 2));
 
-    const departments = proposals.flatMap((proposal) =>
-      proposal.lineItems.map((item) => item.department)
-    );
+    const departments = lineItems
+      .map((item) => item.department)
+      .filter(Boolean); // Remove null/undefined departments
 
-    const uniqueDepartments = Array.from(new Set(departments)).filter(Boolean);
+    console.log("Unique departments before sending:", departments);
 
-    console.log("Unique departments before sending:", uniqueDepartments);
-
-    res.json({ departments: uniqueDepartments });
+    res.json({ departments });
   } catch (error) {
     console.error("Error fetching departments:", error);
     res.status(500).json({ error: "Failed to fetch departments." });
