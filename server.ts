@@ -11,14 +11,24 @@ dotenv.config();
 const app = express();
 
 app.use(express.json());
+// CORS configuration with environment variable support
+const allowedOrigins = [
+  "http://localhost:3000",
+  "http://localhost:3001", 
+  "http://127.0.0.1:3000",
+  "http://127.0.0.1:3001",
+  "https://loa-forecasting.vercel.app"
+];
+
+// Add additional origins from environment variable if provided
+if (process.env.ALLOWED_ORIGINS) {
+  const additionalOrigins = process.env.ALLOWED_ORIGINS.split(',');
+  allowedOrigins.push(...additionalOrigins);
+}
+
 app.use(
   cors({
-    origin: [
-      "http://localhost:3000",
-      "http://localhost:3001", 
-      "http://127.0.0.1:3000",
-      "http://127.0.0.1:3001"
-    ], // must specify exact origins when using credentials: true
+    origin: allowedOrigins,
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allowedHeaders: [
