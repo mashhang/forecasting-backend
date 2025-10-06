@@ -15,11 +15,13 @@ datasource db {
 // Each user can create budget proposals.
 // ===============================
 model User {
-  id        String @id @default(uuid())
-  email     String @unique
-  password  String
-  name      String
-  role      Role   @default(STAFF)
+  id         String @id @default(uuid())
+  email      String @unique
+  password   String
+  name       String
+  role       Role   @default(STAFF)
+  status     Status @default(PENDING)
+  firstLogin Boolean @default(true)
 
   // Relations
   proposals        BudgetProposal[]
@@ -27,6 +29,13 @@ model User {
   comments         Comment[]
 
   @@map("users")
+}
+
+// Enum for user's status
+enum Status {
+  PENDING
+  ACTIVE
+  DEACTIVATED
 }
 
 // Enum for user roles
@@ -76,6 +85,8 @@ model BudgetLineItem {
   id              String         @id @default(uuid())
   description     String
   justification   String?
+  department      String?
+  year            Int
 
   // Relations
   budgetProposal   BudgetProposal @relation(fields: [budgetProposalId], references: [id])
@@ -165,4 +176,25 @@ enum SlipStatus {
   PENDING
   APPROVED
   REJECTED
+}
+
+// ===============================
+// System Log model for auditing
+// ===============================
+model SystemLog {
+  id        String   @id @default(uuid())
+  timestamp DateTime @default(now())
+  level     LogLevel
+  message   String
+  userId    String?
+  userName  String?
+
+  @@map("system_logs")
+}
+
+// Enum for log levels
+enum LogLevel {
+  INFO
+  WARNING
+  ERROR
 }

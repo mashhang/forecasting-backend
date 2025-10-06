@@ -39,7 +39,11 @@ router.post("/login", async (req: Request, res: Response) => {
       message: "Login successful",
       token,
       user: {
-        ...user,
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        firstLogin: user.firstLogin,
       },
     });
   } catch (error) {
@@ -60,9 +64,9 @@ router.get(
           .json({ error: "Unauthorized: No token provided" });
       }
 
-      const decoded = jwt.verify(token, JWT_SECRET) as { userId: string };
+      const decoded = jwt.verify(token, JWT_SECRET) as { id: string };
       const user = await prisma.user.findUnique({
-        where: { id: String(decoded.userId) },
+        where: { id: String(decoded.id) },
       });
 
       if (!user) {

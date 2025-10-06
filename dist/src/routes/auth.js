@@ -28,7 +28,11 @@ router.post("/login", async (req, res) => {
             message: "Login successful",
             token,
             user: {
-                ...user,
+                id: user.id,
+                name: user.name,
+                email: user.email,
+                role: user.role,
+                firstLogin: user.firstLogin,
             },
         });
     }
@@ -47,7 +51,7 @@ router.get("/authenticateUser", async (req, res, next) => {
         }
         const decoded = jsonwebtoken_1.default.verify(token, JWT_SECRET);
         const user = await prisma.user.findUnique({
-            where: { id: String(decoded.userId) },
+            where: { id: String(decoded.id) },
         });
         if (!user) {
             return res.status(404).json({ error: "User not found" });

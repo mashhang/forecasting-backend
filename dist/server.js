@@ -7,7 +7,10 @@ const express_1 = __importDefault(require("express"));
 const cors_1 = __importDefault(require("cors"));
 const dotenv_1 = __importDefault(require("dotenv"));
 const auth_js_1 = __importDefault(require("./src/routes/auth.js"));
+const upload_js_1 = __importDefault(require("./src/routes/upload.js"));
+const forecast_js_1 = __importDefault(require("./src/routes/forecast.js"));
 const user_js_1 = __importDefault(require("./src/routes/user.js"));
+const log_js_1 = __importDefault(require("./src/routes/log.js"));
 dotenv_1.default.config();
 const app = (0, express_1.default)();
 app.use(express_1.default.json());
@@ -17,7 +20,7 @@ app.use((0, cors_1.default)({
         "http://localhost:3001",
         "http://127.0.0.1:3000",
         "http://127.0.0.1:3001"
-    ],
+    ], // must specify exact origins when using credentials: true
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allowedHeaders: [
@@ -31,4 +34,8 @@ app.use((0, cors_1.default)({
 }));
 app.use("/api/auth", auth_js_1.default);
 app.use("/api/user", user_js_1.default);
-app.listen(5001, () => console.log("Server running on port 5001"));
+app.use("/api/file", upload_js_1.default);
+app.use("/api/forecast", forecast_js_1.default);
+app.use("/api/log", log_js_1.default);
+const PORT = process.env.PORT || 5001;
+app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
