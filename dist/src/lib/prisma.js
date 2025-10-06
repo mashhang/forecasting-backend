@@ -2,10 +2,10 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.prisma = void 0;
 // src/lib/prisma.ts
-const prisma_1 = require("../../generated/prisma");
+const client_1 = require("@prisma/client");
 const globalForPrisma = global;
 exports.prisma = globalForPrisma.prisma ||
-    new prisma_1.PrismaClient({
+    new client_1.PrismaClient({
         log: ["query", "error", "warn"],
     });
 if (process.env.NODE_ENV !== "production") {

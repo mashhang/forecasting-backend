@@ -1,5 +1,5 @@
 // types/express.d.ts
-import { User } from "../../generated/prisma";
+import { User } from "@prisma/client";
 import { Request } from "express";
 
 export interface AuthenticatedRequest extends Request {
