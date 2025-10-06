@@ -26,9 +26,23 @@ if (process.env.ALLOWED_ORIGINS) {
   allowedOrigins.push(...additionalOrigins);
 }
 
+// Debug logging for CORS
+console.log("Allowed CORS origins:", allowedOrigins);
+
 app.use(
   cors({
-    origin: allowedOrigins,
+    origin: function (origin, callback) {
+      // Allow requests with no origin (like mobile apps or curl requests)
+      if (!origin) return callback(null, true);
+      
+      if (allowedOrigins.indexOf(origin) !== -1) {
+        console.log("CORS: Allowing origin:", origin);
+        callback(null, true);
+      } else {
+        console.log("CORS: Blocking origin:", origin);
+        callback(new Error('Not allowed by CORS'));
+      }
+    },
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allowedHeaders: [
@@ -41,6 +55,15 @@ app.use(
     ],
   })
 );
+
+// Test endpoint for CORS debugging
+app.get("/api/test", (req, res) => {
+  res.json({ 
+    message: "CORS test successful", 
+    origin: req.headers.origin,
+    timestamp: new Date().toISOString()
+  });
+});
 
 app.use("/api/auth", authRoutes);
 app.use("/api/user", userRoutes);
