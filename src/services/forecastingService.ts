@@ -13,11 +13,15 @@ export async function generateForecast(
   const forecastedData: any[] = [];
 
   // Group historical data by unique item (description + department + category)
-  const groupedData = data.reduce((acc, item) => {
+  // Sort by year first to ensure chronological order
+  const sortedData = [...data].sort((a, b) => (a.year || 0) - (b.year || 0));
+  
+  const groupedData = sortedData.reduce((acc, item) => {
     const key = `${item.description}-${item.department}-${item.category}`;
     if (!acc[key]) {
       acc[key] = { ...item, timeSeries: [] }; // Keep other item details, add timeSeries array
     }
+    // Push quarters in chronological order
     acc[key].timeSeries.push(item.q1, item.q2, item.q3, item.q4);
     return acc;
   }, {});
@@ -28,10 +32,32 @@ export async function generateForecast(
 
     if (timeSeries.length < 2 * seasonalityPeriod) {
       console.warn(`Insufficient data for Holt-Winters for item ${key}. Need at least two full seasonal periods (${2 * seasonalityPeriod} data points) but got ${timeSeries.length}. Skipping forecast.`);
-      forecastedData.push({
-        ...item,
-        forecastedQ1: 0, forecastedQ2: 0, forecastedQ3: 0, forecastedQ4: 0, forecastedTotal: 0
-      });
+      // Try to use a simple average or trend if we have at least some data
+      if (timeSeries.length >= seasonalityPeriod) {
+        // Use average of last seasonalityPeriod values for each quarter
+        const lastSeason = timeSeries.slice(-seasonalityPeriod);
+        const avgQ1 = lastSeason[0] || 0;
+        const avgQ2 = lastSeason[1] || 0;
+        const avgQ3 = lastSeason[2] || 0;
+        const avgQ4 = lastSeason[3] || 0;
+        
+        forecastedData.push({
+          ...item,
+          year: item.year + 1,
+          forecastedQ1: avgQ1,
+          forecastedQ2: avgQ2,
+          forecastedQ3: avgQ3,
+          forecastedQ4: avgQ4,
+          forecastedTotal: avgQ1 + avgQ2 + avgQ3 + avgQ4
+        });
+      } else {
+        // Not enough data even for simple average
+        forecastedData.push({
+          ...item,
+          year: item.year + 1,
+          forecastedQ1: 0, forecastedQ2: 0, forecastedQ3: 0, forecastedQ4: 0, forecastedTotal: 0
+        });
+      }
       continue;
     }
 

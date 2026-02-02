@@ -49,8 +49,20 @@ router.get("/generate/:userId", async (req, res) => {
                 total,
             };
         }));
+        console.log(`Found ${historicalData.length} historical data items for user ${userId}`);
+        console.log(`Department filter: ${department || 'none'}`);
+        console.log(`Sample historical data:`, historicalData.slice(0, 3));
+        if (historicalData.length === 0) {
+            return res.status(400).json({
+                error: "No historical data found. Please upload budget data first.",
+                forecasts: [],
+                varianceAnalysis: []
+            });
+        }
         // Generate forecast
         const forecasts = await (0, forecastingService_1.generateForecast)(historicalData, String(department), parsedSeasonalityPeriod, parsedAlpha, parsedBeta, parsedGamma);
+        console.log(`Generated ${forecasts.length} forecasts`);
+        console.log(`Sample forecast:`, forecasts[0]);
         // Analyze variance (for now, comparing forecasts against themselves as a placeholder)
         const varianceAnalysis = await (0, forecastingService_1.analyzeVariance)(forecasts, historicalData);
         res.json({ forecasts, varianceAnalysis });

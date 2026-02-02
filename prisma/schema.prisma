@@ -201,3 +201,17 @@ enum LogLevel {
   WARNING
   ERROR
 }
+
+// ===============================
+// System Settings model
+// ===============================
+model SystemSettings {
+  id              String   @id @default(uuid())
+  key             String   @unique
+  value           String
+  description     String?
+  updatedAt       DateTime @updatedAt
+  updatedBy       String?
+
+  @@map("system_settings")
+}

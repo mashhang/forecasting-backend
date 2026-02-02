@@ -20,9 +20,45 @@ router.post("/login", async (req, res) => {
         else if (email) {
             user = await prisma.user.findUnique({ where: { email } });
         }
-        if (!user || !(await bcrypt_1.default.compare(password, user.password))) {
+        if (!user) {
             return res.status(401).json({ error: "Invalid credentials" });
         }
+        // Check if account is blocked
+        if (user.isBlocked) {
+            return res.status(403).json({
+                error: "Account blocked due to multiple failed login attempts. Contact Admin.",
+            });
+        }
+        const isPasswordValid = await bcrypt_1.default.compare(password, user.password);
+        if (!isPasswordValid) {
+            // Increment failed login attempts
+            const newFailedAttempts = user.failedLoginAttempts + 1;
+            await prisma.user.update({
+                where: { id: user.id },
+                data: {
+                    failedLoginAttempts: newFailedAttempts,
+                    lastFailedLogin: new Date(),
+                    isBlocked: newFailedAttempts >= 3,
+                },
+            });
+            if (newFailedAttempts >= 3) {
+                return res.status(403).json({
+                    error: "Account blocked due to multiple failed login attempts. Contact Admin.",
+                });
+            }
+            return res.status(401).json({
+                error: `Invalid credentials. ${3 - newFailedAttempts} attempts remaining.`,
+            });
+        }
+        // Reset failed attempts on successful login
+        await prisma.user.update({
+            where: { id: user.id },
+            data: {
+                failedLoginAttempts: 0,
+                lastFailedLogin: null,
+                isBlocked: false,
+            },
+        });
         const token = jsonwebtoken_1.default.sign({ id: String(user.id), role: user.role }, JWT_SECRET, { expiresIn: "1h" });
         res.json({
             message: "Login successful",
