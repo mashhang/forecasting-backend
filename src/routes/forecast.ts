@@ -58,12 +58,22 @@ router.get("/generate/:userId", async (req, res) => {
     console.log(`Sample historical data:`, historicalData.slice(0, 3));
 
     if (historicalData.length === 0) {
-      return res.status(400).json({ 
+      return res.status(400).json({
         error: "No historical data found. Please upload budget data first.",
         forecasts: [],
         varianceAnalysis: []
       });
     }
+
+    // Fetch inflation rate from system settings
+    const inflationRateSetting = await prisma.systemSettings.findUnique({
+      where: { key: 'inflationRate' }
+    });
+    const inflationRate = inflationRateSetting
+      ? parseFloat(inflationRateSetting.value)
+      : 3.5;  // Default fallback
+
+    console.log('Using inflation rate:', inflationRate);
 
     // Generate forecast
     const forecasts = await generateForecast(
@@ -72,7 +82,8 @@ router.get("/generate/:userId", async (req, res) => {
       parsedSeasonalityPeriod,
       parsedAlpha,
       parsedBeta,
-      parsedGamma
+      parsedGamma,
+      inflationRate
     );
 
     console.log(`Generated ${forecasts.length} forecasts`);

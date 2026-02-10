@@ -6,7 +6,8 @@ export async function generateForecast(
   seasonalityPeriod: number = 4,
   alpha: number = 0.5,
   beta: number = 0.3,
-  gamma: number = 0.2
+  gamma: number = 0.2,
+  inflationRate: number = 3.5
 ) {
   console.log("Generating forecast with Nostradamus (Holt-Winters) algorithm...");
 
@@ -36,11 +37,12 @@ export async function generateForecast(
       if (timeSeries.length >= seasonalityPeriod) {
         // Use average of last seasonalityPeriod values for each quarter
         const lastSeason = timeSeries.slice(-seasonalityPeriod);
-        const avgQ1 = lastSeason[0] || 0;
-        const avgQ2 = lastSeason[1] || 0;
-        const avgQ3 = lastSeason[2] || 0;
-        const avgQ4 = lastSeason[3] || 0;
-        
+        const inflationMultiplier = 1 + (inflationRate / 100);
+        const avgQ1 = (lastSeason[0] || 0) * inflationMultiplier;
+        const avgQ2 = (lastSeason[1] || 0) * inflationMultiplier;
+        const avgQ3 = (lastSeason[2] || 0) * inflationMultiplier;
+        const avgQ4 = (lastSeason[3] || 0) * inflationMultiplier;
+
         forecastedData.push({
           ...item,
           year: item.year + 1,
@@ -72,10 +74,13 @@ export async function generateForecast(
 
       const nextYear = item.year + 1;
 
-      const forecastedQ1 = forecastValues[0] || 0;
-      const forecastedQ2 = forecastValues[1] || 0;
-      const forecastedQ3 = forecastValues[2] || 0;
-      const forecastedQ4 = forecastValues[3] || 0;
+      // Apply inflation adjustment
+      const inflationMultiplier = 1 + (inflationRate / 100);
+
+      const forecastedQ1 = (forecastValues[0] || 0) * inflationMultiplier;
+      const forecastedQ2 = (forecastValues[1] || 0) * inflationMultiplier;
+      const forecastedQ3 = (forecastValues[2] || 0) * inflationMultiplier;
+      const forecastedQ4 = (forecastValues[3] || 0) * inflationMultiplier;
       const forecastedTotal = forecastedQ1 + forecastedQ2 + forecastedQ3 + forecastedQ4;
 
       forecastedData.push({

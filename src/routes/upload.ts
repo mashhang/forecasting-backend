@@ -12,8 +12,11 @@ const upload = multer({ storage });
 
 router.post("/upload", upload.single("file"), async (req, res) => {
   try {
+    console.log("=== UPLOAD ENDPOINT CALLED ===");
     const file = (req as any).file;
     const userId = (req as any).body.userId;
+
+    console.log(`File: ${file?.originalname}, UserId: ${userId}`);
 
     if (!file) return res.status(400).json({ error: "No file uploaded" });
     if (!userId) return res.status(400).json({ error: "Missing userId" });
@@ -589,6 +592,10 @@ router.post("/upload", upload.single("file"), async (req, res) => {
       return res.status(400).json({ error: "No valid data rows found in the uploaded file" });
     }
 
+    console.log(`Total normalized rows: ${normalizedRows.length}`);
+    console.log("Sample years from normalized rows:", normalizedRows.slice(0, 5).map(r => r.year));
+    console.log("Last few years from normalized rows:", normalizedRows.slice(-5).map(r => r.year));
+
     // ✅ Validate required fields and data integrity
     const validationErrors: string[] = [];
     normalizedRows.forEach((row, index) => {
@@ -613,51 +620,70 @@ router.post("/upload", upload.single("file"), async (req, res) => {
       });
     }
 
-    // ✅ Create new proposal with better naming
-    const proposal = await prisma.budgetProposal.create({
-      data: {
-        title: `Budget Proposal - ${new Date().toLocaleDateString()} - ${normalizedRows.length} items`,
-        description: `Uploaded from ${file.originalname}`,
-        year: normalizedRows[0]?.year || new Date().getFullYear(),
-        authorId: userId,
-      },
-    });
+    // ✅ Group rows by year and create separate proposals for each year
+    const rowsByYear = normalizedRows.reduce((acc, row) => {
+      const year = row.year;
+      if (!acc[year]) {
+        acc[year] = [];
+      }
+      acc[year].push(row);
+      return acc;
+    }, {} as Record<number, typeof normalizedRows>);
 
-    // ✅ Insert line items and allocations
-    for (const row of normalizedRows) {
-      const lineItem = await (prisma.budgetLineItem as any).create({
+    console.log("Rows grouped by year:", Object.keys(rowsByYear).map(y => `${y}: ${rowsByYear[y]?.length || 0} rows`));
+
+    // ✅ Create proposals and insert line items for each year
+    for (const [yearStr, yearRows] of Object.entries(rowsByYear)) {
+      const year = parseInt(yearStr);
+      console.log(`Creating proposal for year ${year} with ${yearRows.length} rows`);
+
+      const proposal = await prisma.budgetProposal.create({
         data: {
-          description: row.description,
-          justification: row.justification,
-          department: row.department,
-          year: row.year, // Save the year from the normalized row
-          category: {
-            connectOrCreate: {
-              where: { name: row.category },
-              create: { name: row.category },
-            },
-          },
-          budgetProposal: { connect: { id: proposal.id } },
+          title: `Budget Proposal ${year} - ${new Date().toLocaleDateString()} - ${yearRows.length} items`,
+          description: `Uploaded from ${file.originalname}`,
+          year: year,
+          authorId: userId,
         },
       });
 
-      const allocations = [
-        { quarter: 1, proposedAmount: row.q1 },
-        { quarter: 2, proposedAmount: row.q2 },
-        { quarter: 3, proposedAmount: row.q3 },
-        { quarter: 4, proposedAmount: row.q4 },
-        { quarter: 0, proposedAmount: row.total }, // annual total
-      ];
+      console.log(`Created proposal ${proposal.id} for year ${year}`);
 
-      for (const alloc of allocations) {
-        if (alloc.proposedAmount > 0) {
-          await prisma.budgetAllocation.create({
-            data: {
-              quarter: alloc.quarter,
-              proposedAmount: alloc.proposedAmount,
-              budgetLineItemId: lineItem.id,
+      // Insert line items for this year
+      for (const row of yearRows) {
+        const lineItem = await (prisma.budgetLineItem as any).create({
+          data: {
+            description: row.description,
+            justification: row.justification,
+            department: row.department,
+            year: row.year,
+            category: {
+              connectOrCreate: {
+                where: { name: row.category },
+                create: { name: row.category },
+              },
             },
-          });
+            budgetProposal: { connect: { id: proposal.id } },
+          },
+        });
+
+        const allocations = [
+          { quarter: 1, proposedAmount: row.q1 },
+          { quarter: 2, proposedAmount: row.q2 },
+          { quarter: 3, proposedAmount: row.q3 },
+          { quarter: 4, proposedAmount: row.q4 },
+          { quarter: 0, proposedAmount: row.total }, // annual total
+        ];
+
+        for (const alloc of allocations) {
+          if (alloc.proposedAmount > 0) {
+            await prisma.budgetAllocation.create({
+              data: {
+                quarter: alloc.quarter,
+                proposedAmount: alloc.proposedAmount,
+                budgetLineItemId: lineItem.id,
+              },
+            });
+          }
         }
       }
     }
@@ -737,7 +763,7 @@ router.get("/rows/:userId", async (req, res) => {
           justification: item.justification,
           category: item.category.name,
           department: item.department || "N/A",
-          year: proposal.year,
+          year: item.year || proposal.year,
           q1,
           q2,
           q3,
