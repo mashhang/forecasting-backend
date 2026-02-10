@@ -620,33 +620,27 @@ router.post("/upload", upload.single("file"), async (req, res) => {
       });
     }
 
-    // ✅ Group rows by year and create separate proposals for each year
-    const rowsByYear = normalizedRows.reduce((acc, row) => {
-      const year = row.year;
-      if (!acc[year]) {
-        acc[year] = [];
-      }
-      acc[year].push(row);
-      return acc;
-    }, {} as Record<number, typeof normalizedRows>);
+    // ✅ Get unique years and create separate proposals for each
+    const uniqueYears = Array.from(new Set(normalizedRows.map(row => row.year))).sort();
+    console.log(`Found ${uniqueYears.length} unique years:`, uniqueYears);
 
-    console.log("Rows grouped by year:", Object.keys(rowsByYear).map(y => `${y}: ${rowsByYear[y]?.length || 0} rows`));
+    let proposal: any = null;
 
     // ✅ Create proposals and insert line items for each year
-    for (const [yearStr, yearRows] of Object.entries(rowsByYear)) {
-      const year = parseInt(yearStr);
-      console.log(`Creating proposal for year ${year} with ${yearRows.length} rows`);
+    for (const currentYear of uniqueYears) {
+      const yearRows = normalizedRows.filter(row => row.year === currentYear);
+      console.log(`Creating proposal for year ${currentYear} with ${yearRows.length} rows`);
 
-      const proposal = await prisma.budgetProposal.create({
+      proposal = await prisma.budgetProposal.create({
         data: {
-          title: `Budget Proposal ${year} - ${new Date().toLocaleDateString()} - ${yearRows.length} items`,
+          title: `Budget Proposal ${currentYear} - ${new Date().toLocaleDateString()} - ${yearRows.length} items`,
           description: `Uploaded from ${file.originalname}`,
-          year: year,
+          year: currentYear,
           authorId: userId,
         },
       });
 
-      console.log(`Created proposal ${proposal.id} for year ${year}`);
+      console.log(`Created proposal ${proposal.id} for year ${currentYear}`);
 
       // Insert line items for this year
       for (const row of yearRows) {
