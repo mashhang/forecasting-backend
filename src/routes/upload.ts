@@ -620,30 +620,34 @@ router.post("/upload", upload.single("file"), async (req, res) => {
       });
     }
 
-    // ✅ Get unique years and create separate proposals for each
-    const uniqueYears = Array.from(new Set(normalizedRows.map(row => row.year))).sort();
-    console.log(`Found ${uniqueYears.length} unique years:`, uniqueYears);
+    // ✅ Create proposals map (one per year)
+    const proposalMap: Record<number, any> = {};
 
-    let proposal: any = null;
+    // ✅ Create a proposal for each unique year
+    const yearSet = new Set<number>();
+    normalizedRows.forEach(row => yearSet.add(row.year));
 
-    // ✅ Create proposals and insert line items for each year
-    for (const currentYear of uniqueYears) {
-      const yearRows = normalizedRows.filter(row => row.year === currentYear);
-      console.log(`Creating proposal for year ${currentYear} with ${yearRows.length} rows`);
-
-      proposal = await prisma.budgetProposal.create({
+    for (const year of Array.from(yearSet).sort()) {
+      console.log(`Creating proposal for year ${year}`);
+      const proposal = await prisma.budgetProposal.create({
         data: {
-          title: `Budget Proposal ${currentYear} - ${new Date().toLocaleDateString()} - ${yearRows.length} items`,
+          title: `Budget Proposal ${year} - ${new Date().toLocaleDateString()}`,
           description: `Uploaded from ${file.originalname}`,
-          year: currentYear,
+          year: year,
           authorId: userId,
         },
       });
+      proposalMap[year] = proposal;
+      console.log(`Created proposal ${proposal.id} for year ${year}`);
+    }
 
-      console.log(`Created proposal ${proposal.id} for year ${currentYear}`);
-
-      // Insert line items for this year
-      for (const row of yearRows) {
+    // ✅ Insert all line items
+    for (const row of normalizedRows) {
+      const proposal = proposalMap[row.year];
+      if (!proposal) {
+        console.error(`No proposal found for year ${row.year}`);
+        continue;
+      }
         const lineItem = await (prisma.budgetLineItem as any).create({
           data: {
             description: row.description,
@@ -687,11 +691,20 @@ router.post("/upload", upload.single("file"), async (req, res) => {
     const departments = [...new Set(normalizedRows.map(row => row.department))];
     const categories = [...new Set(normalizedRows.map(row => row.category))];
 
+    // ✅ Get the first proposal from the map for the response
+    const firstProposal = Object.values(proposalMap)[0];
+    const createdProposals = Object.entries(proposalMap).map(([year, proposal]) => ({
+      year: parseInt(year),
+      proposalId: proposal.id,
+      proposalTitle: proposal.title,
+    }));
+
     res.json({
       success: true,
       count: normalizedRows.length,
-      proposalId: proposal.id,
-      proposalTitle: proposal.title,
+      proposalId: firstProposal?.id,
+      proposalTitle: firstProposal?.title,
+      createdProposals: createdProposals,
       summary: {
         totalBudget,
         departmentCount: departments.length,
